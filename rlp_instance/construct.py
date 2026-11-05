@@ -1,9 +1,15 @@
 # Build the RLP instance per Daubel Lemma 7 (step 1: subdivide every edge & add short demands; step 2: split short demands > D)
+# Usage: python3 construct.py [instance.json] [out.json]   (defaults: ../instances/instance_47_42.json, instance.json)
+# The instance gives rationals u_i, v_i >= 0 with u_i + v_i <= 1, as for verify_exact.py.
+import sys
 from fractions import Fraction as F
 from itertools import product
 import json
-u = [F(25,28),F(3,7),F(1,2),F(1,3),F(11,42),F(9,28),F(31,42),F(1,2),F(1,7),F(19,28),F(5,21),F(2,3),F(17,42),F(4,7),F(5,84)]
-m=len(u); v=[u[m-1-i] for i in range(m)]; n0=2*m; Dm=F(1)
+src = json.load(open(sys.argv[1] if len(sys.argv) > 1 else '../instances/instance_47_42.json'))
+out = sys.argv[2] if len(sys.argv) > 2 else 'instance.json'
+u=[F(x) for x in src['u']]; v=[F(x) for x in src['v']]
+m=len(u); n0=2*m; Dm=F(1)
+assert len(v)==m and all(x>=0 for x in u+v) and all(a+b<=Dm for a,b in zip(u,v)), "invalid instance"
 d=[u[i]+v[i] for i in range(m)]
 # split loads on original ring: edge e = (e,e+1)
 def onCW(i,e): # is edge e on clockwise path i -> i+m ?
@@ -43,6 +49,7 @@ def cw_edges(a,b):
     return out
 for dd in dem:
     cw=set(cw_edges(dd['a'],dd['b'])); dd['cw']=cw; dd['ccw']=set(range(N))-cw
+print("instance", sys.argv[1] if len(sys.argv) > 1 else '../instances/instance_47_42.json', " m =", m)
 print("N nodes",N,"#demands",len(dem),"#short",sum(1 for x in dem if x['kind']=='short'),"max demand",max(x['val'] for x in dem))
 print("#gadgets with s>1:",sum(1 for g in gadgets if g[1]=='S2'), " max s",max(g[2] for g in gadgets), " #zero s", sum(1 for g in gadgets if g[2]==0))
 # load of given split routing
@@ -74,7 +81,7 @@ for (e,kind,s,ds,p) in gadgets:
                 if f in path: g[f]+=x['val']
         if max(g.values())<s: ok=False; print("gadget fails",e,bits)
 print("gadget property holds for all gadgets:",ok)
-# min over 2^15 crossing routings of max_e (c(e)+s_e) with shorts short
+# min over 2^m crossing routings of max_e (c(e)+s_e) with shorts short
 crossd=[x for x in dem if x['kind']=='cross']
 shortload=[F(0)]*N
 for x in dem:
@@ -88,4 +95,4 @@ for bits in product((0,1),repeat=m):
     M=max(Ld)
     if bestL is None or M<bestL: bestL=M
 print("L (all shorts short, best crossing) =",bestL," L - lmax =",bestL-lmax)
-json.dump(dict(N=N,dem=[dict(a=x['a'],b=x['b'],val=str(x['val'])) for x in dem],lmax=str(lmax)),open('instance.json','w'))
+json.dump(dict(N=N,dem=[dict(a=x['a'],b=x['b'],val=str(x['val'])) for x in dem],lmax=str(lmax)),open(out,'w'))
